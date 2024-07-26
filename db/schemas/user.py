@@ -4,4 +4,4 @@ def user_schema(user) -> dict:
             "email": user["email"]}
 
 def users_schema(users) -> list:
-    return [users_schema(user) for user in users]
+    return [user_schema(user) for user in users]
