@@ -9,9 +9,9 @@ class User(BaseModel): #modelo de usuario
     surname: str
     age: int
 
-users_list = [User(id=1,name="Nehuen",surname="Kendziura",age=21),
-              User(id=2,name="Nahuel",surname="Kend",age=17),
-              User(id=3,name="Neuquen",surname="K",age="15")]
+users_list = [User(id=1,name="user1",surname="u1",age=11),
+              User(id=2,name="user2",surname="u2",age=22),
+              User(id=3,name="user3",surname="u3",age="33")]
 
 @router.get("/users")
 async def users():
