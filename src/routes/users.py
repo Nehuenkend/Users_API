@@ -1,67 +1,63 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-from db.client import db_client
-from db.schemas.user import user_schema, users_schema
-from bson import ObjectId
+from pydantic import BaseModel  #para definir una entidad q define usuarios, en este caso
 
-router = APIRouter(prefix="/userdb",
-                   tags=["userdb"],
-                   responses={404: {"message":"No encontrado"}})
+router = APIRouter()
 
-class User(BaseModel):
-    id: Optional[str] = None
-    username: str
-    email: str
+class User(BaseModel): #modelo de usuario
+    id: int
+    name: str
+    surname: str
+    age: int
 
-@router.get("/", response_model=list[User])
-def users():
-    return users_schema(db_client.local.users.find())
+users_list = [User(id=1,name="Nehuen",surname="Kendziura",age=21),
+              User(id=2,name="Nahuel",surname="Kend",age=17),
+              User(id=3,name="Neuquen",surname="K",age="15")]
 
-@router.get("/{id}") #Path
-def user(id: str):
-    return search_user("_id", ObjectId(id))
+@router.get("/users")
+async def users():
+    return users_list
 
-@router.get("/") #Query
-def user(id: str):
-    return search_user("_id", ObjectId(id))
+@router.get("/user/{id}") #Path
+async def user(id: int):
+    return search_user(id)
 
-@router.post("/", response_model=User, status_code=201) #201="Created"
-def user(user: User):
-    if type(search_user("email", user.email)) == User:
-        raise HTTPException(404, detail="El email ya esta en uso") #404="Not Found"
-    
-    user_dict = dict(user)
-    del user_dict["id"]
-    
-    id = db_client.local.users.insert_one(user_dict).inserted_id
-    new_user = user_schema(db_client.local.users.find_one({"_id": id})) #En mongoDB "id" es "_id", y el find_one devuelve in json por lo que necesitamos el "user_schema"
+@router.get("/user/") #Query
+async def user(id: int):
+    return search_user(id)
 
-    return User(**new_user)
+@router.post("/user/", response_model=User, status_code=201) #201="Created"
+async def user(user: User):
+    if type(search_user(user.id)) == User:
+        raise HTTPException(404, detail="El usuario ya existe") #404="Not Found"
+    users_list.append(user)
+    return user
 
-@router.put("/")
-def user(user: User):
-    user_dict = dict(user)
-    del user_dict["id"]
-    try:
-        db_client.local.users.find_one_and_replace({"_id": ObjectId(user.id)}, user_dict)
-    except:
+@router.put("/user/")
+async def user(user: User):
+    found = False
+    for index, saved_user in enumerate(users_list):
+        if saved_user.id == user.id:
+            users_list[index] = user
+            found = True
+    if not found:
         raise HTTPException(404, detail="No se ha encontrado el usuario")
-    
-    return search_user("_id", ObjectId(user.id))
+    return user
 
-@router.delete("/{id}", status_code=200)
-async def user(id: str):
-    found = db_client.local.users.find_one_and_delete({"_id": ObjectId(id)})
-    
+@router.delete("/user/{id}")
+async def user(id: int):
+    found = False
+    for index, saved_user in enumerate(users_list):
+        if saved_user.id == id:
+            del users_list[index]
+            found = True
     if not found:
         return {"error": "no se ha eliminado el usuario"}
 
-#funcion para ver si hay un usuario en la id:
-
-def search_user(field: str, key):
+#fucion para ver si hay algun usuario en la id:
+def search_user(id: int):
+    user = filter(lambda user: user.id == id, users_list)
     try:
-        user = db_client.local.users.find_one({field:key})
-        return User(**user_schema(user))
+        return list(user)[0]
     except:
         return {"error": "No se ha encontrado el usuario"}
+    
